@@ -21,7 +21,7 @@ ENV/
 backend/.env
 
 # ── Firebase Admin Key (SENSITIVE) ───────────────────────
-firebase-admin.json
+backend/firebase-admin.json
 *-firebase-adminsdk-*.json
 
 # ── Node / Frontend ───────────────────────────────────────
