@@ -1,0 +1,64 @@
+# ── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+ENV/
+
+# ── Environment Variables (SENSITIVE) ────────────────────
+.env
+.env.local
+.env.production
+backend/.env
+
+# ── Firebase Admin Key (SENSITIVE) ───────────────────────
+firebase-admin.json
+*-firebase-adminsdk-*.json
+
+# ── Node / Frontend ───────────────────────────────────────
+node_modules/
+dist/
+.npm
+*.log
+npm-debug.log*
+
+# ── Uploads folder ────────────────────────────────────────
+backend/uploads/
+
+# ── VS Code ───────────────────────────────────────────────
+.vscode/
+*.code-workspace
+
+# ── OS Files ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Python Virtual Environments ───────────────────────────
+.virtualenvs/
+*.virtualenv
+
+# ── Logs ──────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Temp files ────────────────────────────────────────────
+*.tmp
+*.temp
+*.swp
+*.swo
+seed.py
+add_user.py
+
+# ── Pinecone / AI ─────────────────────────────────────────
+*.pkl
+*.pickle

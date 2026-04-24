@@ -1,13 +1,9 @@
 from datetime import datetime
 from bson import ObjectId
-from app.db.mongodb import get_db
+from app.db.mongodb import get_db, get_gridfs
 from app.db.redis import get_redis
 import json
-import os
-import shutil
-
-UPLOAD_DIR = "uploads/courses"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+import io
 
 async def upload_course_material(
     title: str,
@@ -19,11 +15,22 @@ async def upload_course_material(
     file
 ) -> dict:
     db = get_db()
+    gridfs = get_gridfs()
 
-    file_name = f"{datetime.utcnow().timestamp()}_{file.filename}"
-    file_path = os.path.join(UPLOAD_DIR, file_name)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Read file content
+    file_content = await file.read()
+
+    # Upload to GridFS
+    file_id = await gridfs.upload_from_stream(
+        file.filename,
+        io.BytesIO(file_content),
+        metadata={
+            "content_type": file.content_type,
+            "department": department,
+            "class_name": class_name,
+            "batch": batch
+        }
+    )
 
     course = {
         "title": title,
@@ -31,8 +38,9 @@ async def upload_course_material(
         "department": department,
         "class_name": class_name,
         "batch": batch,
-        "file_url": f"/uploads/courses/{file_name}",
+        "file_id": str(file_id),
         "file_name": file.filename,
+        "file_url": f"/api/files/{str(file_id)}",
         "uploaded_by": uploaded_by,
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow()
@@ -48,11 +56,7 @@ async def upload_course_material(
 
     return course
 
-async def get_courses(
-    department: str,
-    class_name: str,
-    batch: str
-) -> list:
+async def get_courses(department: str, class_name: str, batch: str) -> list:
     db = get_db()
     redis = get_redis()
 
@@ -63,10 +67,11 @@ async def get_courses(
         if cached:
             return json.loads(cached)
 
-    query = {"department": department, "batch": batch}
-    if class_name and class_name.strip():
-        query["class_name"] = class_name
-
+    query = {
+        "department": department,
+        "class_name": class_name,
+        "batch": batch
+    }
     courses = await db.courses.find(query).to_list(1000)
     for course in courses:
         course["id"] = str(course["_id"])
@@ -79,11 +84,21 @@ async def get_courses(
 
 async def delete_course(course_id: str, uid: str, role: str) -> bool:
     db = get_db()
+    gridfs = get_gridfs()
+
     course = await db.courses.find_one({"_id": ObjectId(course_id)})
     if not course:
         return False
+
     if role != "admin" and course["uploaded_by"] != uid:
         raise PermissionError("Not authorized to delete this material")
+
+    # Delete file from GridFS
+    if "file_id" in course:
+        try:
+            await gridfs.delete(ObjectId(course["file_id"]))
+        except Exception:
+            pass
 
     await db.courses.delete_one({"_id": ObjectId(course_id)})
 

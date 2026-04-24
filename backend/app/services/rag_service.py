@@ -54,7 +54,7 @@ async def query_rag(question: str) -> str:
     if not context.strip():
         return "Not Found"
     answer = client.models.generate_content(
-        model="gemini-2.0-flash-lite",
+        model="gemini-2.5-flash",
         contents=f"Answer based on context only. Context: {context} Question: {question}"
     )
     return answer.text.strip()

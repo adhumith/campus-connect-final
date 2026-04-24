@@ -3,8 +3,20 @@ import Layout from "../../components/common/Layout";
 import api from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 
+const DEPARTMENTS = ["All", "CSE", "ECE", "EEE", "MECH", "CIVIL", "IT"];
+const BATCHES = ["All", "2021", "2022", "2023", "2024", "2025"];
+const ROLES = ["All", "student", "staff"];
+
 function SendNotificationModal({ onClose, onSent }) {
-  const [form, setForm] = useState({ title: "", message: "", type: "general" });
+  const [form, setForm] = useState({
+    title: "",
+    message: "",
+    type: "general",
+    target_department: "",
+    target_class: "",
+    target_batch: "",
+    target_role: ""
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -16,7 +28,21 @@ function SendNotificationModal({ onClose, onSent }) {
     setLoading(true);
     setError("");
     try {
-      await api.post("/api/notifications/", form);
+      const payload = {
+        title: form.title,
+        message: form.message,
+        type: form.type,
+      };
+      if (form.target_department && form.target_department !== "All")
+        payload.target_department = form.target_department;
+      if (form.target_class)
+        payload.target_class = form.target_class;
+      if (form.target_batch && form.target_batch !== "All")
+        payload.target_batch = form.target_batch;
+      if (form.target_role && form.target_role !== "All")
+        payload.target_role = form.target_role;
+
+      await api.post("/api/notifications/", payload);
       onSent();
       onClose();
     } catch (err) {
@@ -28,15 +54,20 @@ function SendNotificationModal({ onClose, onSent }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">Send Notification</h3>
+        <h3 className="text-xl font-bold text-gray-800 mb-1">Send Notification</h3>
+        <p className="text-gray-500 text-sm mb-4">
+          Send to everyone or target specific students/staff
+        </p>
         {error && (
           <div className="bg-red-100 text-red-600 px-4 py-2 rounded-lg mb-4 text-sm">{error}</div>
         )}
         <div className="space-y-3">
-          <input type="text" placeholder="Notification Title" value={form.title}
+          <input type="text" placeholder="Notification Title"
+            value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
             className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <textarea placeholder="Message" value={form.message}
+          <textarea placeholder="Message"
+            value={form.message}
             onChange={(e) => setForm({ ...form, message: e.target.value })}
             className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 h-24" />
           <select value={form.type}
@@ -48,6 +79,49 @@ function SendNotificationModal({ onClose, onSent }) {
             <option value="blog">✍️ Blog</option>
             <option value="urgent">🚨 Urgent</option>
           </select>
+
+          {/* Target Section */}
+          <div className="bg-gray-50 rounded-xl p-4">
+            <p className="text-sm font-medium text-gray-700 mb-3">
+              🎯 Target (leave empty to send to everyone)
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Department</label>
+                <select value={form.target_department}
+                  onChange={(e) => setForm({ ...form, target_department: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {DEPARTMENTS.map(d => <option key={d} value={d === "All" ? "" : d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Class</label>
+                <input type="text" placeholder="e.g. A or B"
+                  value={form.target_class}
+                  onChange={(e) => setForm({ ...form, target_class: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Batch/Year</label>
+                <select value={form.target_batch}
+                  onChange={(e) => setForm({ ...form, target_batch: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {BATCHES.map(b => <option key={b} value={b === "All" ? "" : b}>{b}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Role</label>
+                <select value={form.target_role}
+                  onChange={(e) => setForm({ ...form, target_role: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {ROLES.map(r => <option key={r} value={r === "All" ? "" : r}>{r}</option>)}
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              💡 Example: Select CSE + A + 2024 to notify only CSE-A 2024 batch students
+            </p>
+          </div>
         </div>
         <div className="flex gap-3 mt-6">
           <button onClick={onClose}
@@ -127,7 +201,9 @@ export default function AdminNotifications() {
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Notifications</h1>
             {unreadCount > 0 && (
-              <p className="text-sm text-blue-600 mt-1">{unreadCount} unread notification{unreadCount > 1 ? "s" : ""}</p>
+              <p className="text-sm text-blue-600 mt-1">
+                {unreadCount} unread notification{unreadCount > 1 ? "s" : ""}
+              </p>
             )}
           </div>
           <div className="flex gap-3">
@@ -137,16 +213,15 @@ export default function AdminNotifications() {
                 ✅ Mark All Read
               </button>
             )}
-            {userProfile?.role in ["admin", "staff"] && (
+            {(userProfile?.role === "admin" || userProfile?.role === "staff") && (
               <button onClick={() => setShowSend(true)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                + Send Notification
+                📢 Send Notification
               </button>
             )}
           </div>
         </div>
 
-        {/* Notifications List */}
         {loading ? (
           <div className="text-center py-12 text-gray-500">Loading...</div>
         ) : notifications.length === 0 ? (
@@ -163,8 +238,8 @@ export default function AdminNotifications() {
                 }`}>
                 <div className="text-3xl">{getTypeIcon(notification.type)}</div>
                 <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-bold text-gray-800">{notification.title}</h3>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getTypeColor(notification.type)}`}>
                         {notification.type}
@@ -172,6 +247,12 @@ export default function AdminNotifications() {
                       {!notification.is_read && (
                         <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500 text-white">
                           New
+                        </span>
+                      )}
+                      {/* Show target info */}
+                      {notification.target && Object.keys(notification.target).length > 0 && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+                          🎯 {Object.values(notification.target).join(" • ")}
                         </span>
                       )}
                     </div>

@@ -4,7 +4,10 @@ import os
 
 def initialize_firebase():
     if not firebase_admin._apps:
-        cred_path = os.path.join("C:\\campus-platform\\backend\\firebase-admin.json")
+        # Get the path relative to this file
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        cred_path = os.path.join(base_dir, "firebase-admin.json")
+        print(f"Looking for firebase-admin.json at: {cred_path}")
         cred = credentials.Certificate(cred_path)
         firebase_admin.initialize_app(cred)
         print("✅ Firebase Admin initialized successfully")

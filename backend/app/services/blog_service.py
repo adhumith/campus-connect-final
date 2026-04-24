@@ -5,11 +5,8 @@ from app.db.redis import get_redis
 from google import genai
 from app.core.config import settings
 import json
-import os
-import shutil
 
-UPLOAD_DIR = "uploads/blogs"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 
 client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
@@ -79,11 +76,16 @@ async def create_blog(
 
     image_url = None
     if file:
-        file_name = f"{datetime.utcnow().timestamp()}_{file.filename}"
-        file_path = os.path.join(UPLOAD_DIR, file_name)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        image_url = f"/uploads/blogs/{file_name}"
+        from app.db.mongodb import get_gridfs
+        import io
+        gridfs = get_gridfs()
+        file_content = file.file.read()
+        file_id = await gridfs.upload_from_stream(
+            file.filename,
+            io.BytesIO(file_content),
+            metadata={"type": "blog_image"}
+        )
+        image_url = f"/api/files/{str(file_id)}"
 
     blog = {
         "title": title,

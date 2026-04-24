@@ -1,11 +1,7 @@
 from datetime import datetime
 from bson import ObjectId
-from app.db.mongodb import get_db
-import os
-import shutil
-
-UPLOAD_DIR = "uploads/assignments"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+from app.db.mongodb import get_db, get_gridfs
+import io
 
 async def create_assignment(data: dict, created_by: str) -> dict:
     db = get_db()
@@ -74,15 +70,14 @@ async def submit_assignment(
     file
 ) -> dict:
     db = get_db()
+    gridfs = get_gridfs()
 
-    # Check deadline
     assignment = await get_assignment_by_id(assignment_id)
     if not assignment:
         raise ValueError("Assignment not found")
     if datetime.utcnow() > assignment["deadline"]:
         raise ValueError("Deadline has passed")
 
-    # Check already submitted
     existing = await db.submissions.find_one({
         "assignment_id": assignment_id,
         "student_uid": student_uid
@@ -90,17 +85,20 @@ async def submit_assignment(
     if existing:
         raise ValueError("Already submitted")
 
-    # Save file
-    file_name = f"{datetime.utcnow().timestamp()}_{file.filename}"
-    file_path = os.path.join(UPLOAD_DIR, file_name)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Upload file to GridFS
+    file_content = await file.read()
+    file_id = await gridfs.upload_from_stream(
+        file.filename,
+        io.BytesIO(file_content),
+        metadata={"student_uid": student_uid, "assignment_id": assignment_id}
+    )
 
     submission = {
         "assignment_id": assignment_id,
         "student_uid": student_uid,
         "rollno": rollno,
-        "file_url": f"/uploads/assignments/{file_name}",
+        "file_id": str(file_id),
+        "file_url": f"/api/files/{str(file_id)}",
         "file_name": file.filename,
         "submitted_at": datetime.utcnow()
     }

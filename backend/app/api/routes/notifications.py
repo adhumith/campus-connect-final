@@ -3,6 +3,7 @@ from app.core.security import get_current_user
 from app.services.auth_service import get_user_by_uid
 from app.services.notification_service import (
     get_notifications,
+    get_user_notifications,
     mark_as_read,
     send_notification
 )
@@ -17,7 +18,16 @@ async def get_current_profile(current_user: dict = Depends(get_current_user)):
 
 @router.get("/")
 async def get_all_notifications(profile: dict = Depends(get_current_profile)):
-    return await get_notifications(profile["uid"])
+    if profile["role"] in ["admin", "staff"]:
+        return await get_notifications(profile["uid"])
+    else:
+        return await get_user_notifications(
+            uid=profile["uid"],
+            department=profile["department"],
+            class_name=profile["class_name"],
+            batch=profile["batch"],
+            role=profile["role"]
+        )
 
 @router.put("/{notification_id}/read")
 async def read_notification(
@@ -38,5 +48,9 @@ async def create_notification(
         title=data["title"],
         message=data["message"],
         created_by=profile["uid"],
-        type=data.get("type", "general")
+        type=data.get("type", "general"),
+        target_department=data.get("target_department"),
+        target_class=data.get("target_class"),
+        target_batch=data.get("target_batch"),
+        target_role=data.get("target_role")
     )
